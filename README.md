@@ -4,17 +4,27 @@
 
 ---
 
-## 📸 Screenshots
+## 📸 Screenshots & UI Showcase
 
-*(Add your app screenshots here)*
+### 🏠 Dashboard, Tasks & Interactions
 
-| ☀️ Today View | 🗓️ Calendar Records | ➕ New Task & Time |
+| ☀️ Today View | 📋 Task Objectives & Action | 🗑️ Delete Confirmation |
 | :---: | :---: | :---: |
-| ![Today](assets/screenshots/today.png) | ![Records](assets/screenshots/records.png) | ![New Task](assets/screenshots/new_task.png) |
+| <img src="assets/screenshots/today_home.png" width="240" alt="Today Home Screen" /> | <img src="assets/screenshots/task_detail.png" width="240" alt="Task Details" /> | <img src="assets/screenshots/delete_task_sheet.png" width="240" alt="Delete Task Confirmation" /> |
 
-| 🌙 Dark Mode | 👤 Profile & Sync | 🗑️ Delete Confirmation |
+| ➕ Create New Task | 🗓️ Calendar Records Grid | 📅 Day Schedule Detail |
 | :---: | :---: | :---: |
-| ![Dark Mode](assets/screenshots/dark_mode.png) | ![Profile](assets/screenshots/profile.png) | ![Delete](assets/screenshots/delete_sheet.png) |
+| <img src="assets/screenshots/new_task.png" width="240" alt="New Task Screen" /> | <img src="assets/screenshots/records_calendar.png" width="240" alt="Monthly Calendar Records" /> | <img src="assets/screenshots/day_detail_records.png" width="240" alt="Day Detail Records" /> |
+
+| 📖 Record Task Details | 👤 Profile & Statistics |
+| :---: | :---: |
+| <img src="assets/screenshots/task_detail_records.png" width="240" alt="Record Task Detail" /> | <img src="assets/screenshots/profile_account.png" width="240" alt="Profile and Statistics" /> |
+
+### 🔐 Authentication Flow
+
+| 🔑 Sign In | 📝 Create Account | 🔒 Password Recovery |
+| :---: | :---: | :---: |
+| <img src="assets/screenshots/auth_signin.png" width="240" alt="Sign In Screen" /> | <img src="assets/screenshots/auth_signup.png" width="240" alt="Sign Up Screen" /> | <img src="assets/screenshots/auth_forgot_password.png" width="240" alt="Forgot Password Screen" /> |
 
 ---
 

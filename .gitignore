@@ -46,3 +46,7 @@ app.*.map.json
 
 # Widget Preview related
 .widget_preview/
+
+# OS generated files
+desktop.ini
+Thumbs.db
