@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "1049539663833",
+    "project_id": "keeptrack-app",
+    "storage_bucket": "keeptrack-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1049539663833:android:0a1c0ee72c053671c72bc8",
+        "android_client_info": {
+          "package_name": "com.monotodo.app.monotodo"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1049539663833-i0v63fqqi9v41oojthrv7u9e21f252fh.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.monotodo.app.monotodo",
+            "certificate_hash": "99f3003d0dcdb8d482d0e29aa5a7b7aa1d589a0f"
+          }
+        },
+        {
+          "client_id": "1049539663833-nvqotjaoth4gtf8u2363lpb4tq1dcv5e.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDqgotSxn356lzx0nT3zN8uY1_tGcoVMe4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1049539663833-nvqotjaoth4gtf8u2363lpb4tq1dcv5e.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
