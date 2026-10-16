@@ -5,6 +5,8 @@ import '../../../core/theme/theme_provider.dart';
 import '../../auth/auth_controller.dart';
 import '../../tasks/task_controller.dart';
 import '../../../services/auth_service.dart';
+import '../../../services/notification_service.dart';
+import '../../../shared/custom_snackbar.dart';
 
 class ProfileDetailScreen extends ConsumerWidget {
   const ProfileDetailScreen({super.key});
@@ -375,6 +377,149 @@ class ProfileDetailScreen extends ConsumerWidget {
                       isSelected: currentTheme == ThemeMode.dark,
                       onTap: () => ref.read(themeModeProvider.notifier).setThemeMode(ThemeMode.dark),
                       isDark: isDark,
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 28),
+
+              // Section: NOTIFICATIONS & REMINDERS
+              Text(
+                'NOTIFICATIONS & REMINDERS',
+                style: GoogleFonts.mali(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1.2,
+                  color: secondaryTextColor,
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: cardBg,
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: borderColor, width: 1.2),
+                ),
+                child: Column(
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF3B82F6).withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(
+                            Icons.notifications_active_rounded,
+                            size: 22,
+                            color: Color(0xFF3B82F6),
+                          ),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Scheduled Push Reminders',
+                                style: GoogleFonts.mali(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w700,
+                                  color: primaryTextColor,
+                                ),
+                              ),
+                              Text(
+                                'Fires alerts even when app is closed',
+                                style: GoogleFonts.mali(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                  color: secondaryTextColor,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: () async {
+                              final granted =
+                                  await NotificationService().requestPermissions();
+                              if (context.mounted) {
+                                AppSnackbar.show(
+                                  context,
+                                  message: granted
+                                      ? 'Notification permission granted! ✅'
+                                      : 'Notification permission denied. Please allow in settings.',
+                                  isError: !granted,
+                                );
+                              }
+                            },
+                            icon: const Icon(Icons.security_rounded, size: 16),
+                            label: Text(
+                              'Permissions',
+                              style: GoogleFonts.mali(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: primaryTextColor,
+                              side: BorderSide(color: borderColor),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              padding: const EdgeInsets.symmetric(vertical: 11),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: () async {
+                              await NotificationService().showInstantNotification(
+                                title: 'KeepTrack Reminder Test 🔔',
+                                body:
+                                    'Push notification received successfully in background!',
+                              );
+                              if (context.mounted) {
+                                AppSnackbar.show(
+                                  context,
+                                  message:
+                                      'Test notification triggered! Check your notification tray.',
+                                );
+                              }
+                            },
+                            icon: const Icon(Icons.send_rounded, size: 16),
+                            label: Text(
+                              'Test Alert',
+                              style: GoogleFonts.mali(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor:
+                                  isDark ? Colors.white : const Color(0xFF111827),
+                              foregroundColor:
+                                  isDark ? Colors.black : Colors.white,
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              padding: const EdgeInsets.symmetric(vertical: 11),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),

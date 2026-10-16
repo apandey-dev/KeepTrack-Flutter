@@ -13,6 +13,8 @@ class TaskModel {
   final TaskPriority priority;
   final int colorIndex;
   final bool isCompleted;
+  final bool reminderEnabled;
+  final DateTime? reminderDateTime;
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
@@ -27,6 +29,8 @@ class TaskModel {
     this.priority = TaskPriority.low,
     this.colorIndex = 1,
     this.isCompleted = false,
+    this.reminderEnabled = false,
+    this.reminderDateTime,
     this.createdAt,
     this.updatedAt,
   });
@@ -80,6 +84,15 @@ class TaskModel {
       updated = (data['updatedAt'] as Timestamp).toDate();
     }
 
+    DateTime? reminderTime;
+    if (data['reminderDateTime'] is Timestamp) {
+      reminderTime = (data['reminderDateTime'] as Timestamp).toDate();
+    } else if (data['reminderDateTime'] is String) {
+      reminderTime = DateTime.tryParse(data['reminderDateTime'] as String);
+    }
+
+    final reminderEnabled = data['reminderEnabled'] as bool? ?? (reminderTime != null);
+
     return TaskModel(
       id: docId,
       userId: data['userId'] as String? ?? '',
@@ -91,6 +104,8 @@ class TaskModel {
       priority: TaskPriority.fromValue(data['priority'] as String?),
       colorIndex: (data['colorIndex'] as num?)?.toInt() ?? 1,
       isCompleted: data['isCompleted'] as bool? ?? false,
+      reminderEnabled: reminderEnabled,
+      reminderDateTime: reminderTime,
       createdAt: created,
       updatedAt: updated,
     );
@@ -108,6 +123,9 @@ class TaskModel {
       'priority': priority.toValue(),
       'colorIndex': colorIndex,
       'isCompleted': isCompleted,
+      'reminderEnabled': reminderEnabled,
+      'reminderDateTime':
+          reminderDateTime != null ? Timestamp.fromDate(reminderDateTime!) : null,
       'updatedAt': FieldValue.serverTimestamp(),
       if (createdAt == null) 'createdAt': FieldValue.serverTimestamp(),
     };
@@ -125,6 +143,8 @@ class TaskModel {
     TaskPriority? priority,
     int? colorIndex,
     bool? isCompleted,
+    bool? reminderEnabled,
+    DateTime? reminderDateTime,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -139,6 +159,8 @@ class TaskModel {
       priority: priority ?? this.priority,
       colorIndex: colorIndex ?? this.colorIndex,
       isCompleted: isCompleted ?? this.isCompleted,
+      reminderEnabled: reminderEnabled ?? this.reminderEnabled,
+      reminderDateTime: reminderDateTime ?? this.reminderDateTime,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );

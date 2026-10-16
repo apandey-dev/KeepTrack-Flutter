@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart';
 import '../../../models/task_model.dart';
 import '../../../models/task_theme_color.dart';
+import '../../../services/notification_service.dart';
 import '../../../shared/custom_snackbar.dart';
 import '../task_controller.dart';
 
@@ -63,42 +65,115 @@ class TaskDetailScreen extends ConsumerWidget {
                 ),
               ),
 
-              // Due Time Pill (if set)
-              if (task.dueTime != null && task.dueTime!.isNotEmpty) ...[
-                const SizedBox(height: 16),
-                Center(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-                    decoration: BoxDecoration(
-                      color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                        color: isDark ? const Color(0xFF2E2E2E) : const Color(0xFFE5E7EB),
-                        width: 1.2,
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(
-                          Icons.access_time_rounded,
-                          size: 15,
-                          color: Color(0xFF3B82F6),
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          'Due at ${task.dueTime}',
-                          style: GoogleFonts.mali(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: isDark ? Colors.white : const Color(0xFF111827),
+              const SizedBox(height: 16),
+
+              // Due Time & Reminder Pills
+              Center(
+                child: Wrap(
+                  alignment: WrapAlignment.center,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 10,
+                  runSpacing: 10,
+                  children: [
+                    if (task.dueTime != null && task.dueTime!.isNotEmpty)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                        decoration: BoxDecoration(
+                          color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: isDark ? const Color(0xFF2E2E2E) : const Color(0xFFE5E7EB),
+                            width: 1.2,
                           ),
                         ),
-                      ],
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.access_time_rounded,
+                              size: 15,
+                              color: Color(0xFF3B82F6),
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              'Due at ${task.dueTime}',
+                              style: GoogleFonts.mali(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: isDark ? Colors.white : const Color(0xFF111827),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                    // Reminder status & toggle pill
+                    GestureDetector(
+                      onTap: isFromRecord ? null : () => _toggleReminder(context, ref),
+                      behavior: HitTestBehavior.opaque,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                        decoration: BoxDecoration(
+                          color: task.reminderEnabled
+                              ? (isDark ? const Color(0xFF1E2838) : const Color(0xFFEFF6FF))
+                              : (isDark ? const Color(0xFF1E1E1E) : Colors.white),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: task.reminderEnabled
+                                ? (isDark
+                                    ? const Color(0xFF3B82F6).withValues(alpha: 0.5)
+                                    : const Color(0xFFBFDBFE))
+                                : (isDark
+                                    ? const Color(0xFF2E2E2E)
+                                    : const Color(0xFFE5E7EB)),
+                            width: 1.2,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              task.reminderEnabled
+                                  ? Icons.notifications_active_rounded
+                                  : Icons.notifications_none_rounded,
+                              size: 15,
+                              color: task.reminderEnabled
+                                  ? const Color(0xFF3B82F6)
+                                  : secondaryTextColor,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              task.reminderEnabled && task.reminderDateTime != null
+                                  ? 'Reminder: ${DateFormat('d MMM, hh:mm a').format(task.reminderDateTime!)}'
+                                  : 'Set Reminder',
+                              style: GoogleFonts.mali(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: task.reminderEnabled
+                                    ? (isDark
+                                        ? const Color(0xFF93C5FD)
+                                        : const Color(0xFF2563EB))
+                                    : secondaryTextColor,
+                              ),
+                            ),
+                            if (!isFromRecord) ...[
+                              const SizedBox(width: 4),
+                              Icon(
+                                Icons.edit_outlined,
+                                size: 12,
+                                color: task.reminderEnabled
+                                    ? const Color(0xFF3B82F6)
+                                    : secondaryTextColor,
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
                     ),
-                  ),
+                  ],
                 ),
-              ],
+              ),
+
 
               const SizedBox(height: 36),
 
@@ -254,4 +329,78 @@ class TaskDetailScreen extends ConsumerWidget {
       ),
     );
   }
+
+  Future<void> _toggleReminder(BuildContext context, WidgetRef ref) async {
+    final newEnabled = !task.reminderEnabled;
+    if (newEnabled) {
+      final granted = await NotificationService().requestPermissions();
+      if (!context.mounted) return;
+      if (!granted) {
+        AppSnackbar.show(
+          context,
+          message: 'Notification permission is required to enable reminders.',
+          isError: true,
+        );
+        return;
+      }
+
+      DateTime? reminderDate = task.reminderDateTime;
+      final now = DateTime.now();
+      if (reminderDate == null || reminderDate.isBefore(now)) {
+        final pickedDate = await showDatePicker(
+          context: context,
+          initialDate: task.scheduledDate.isAfter(now) ? task.scheduledDate : now,
+          firstDate: now,
+          lastDate: DateTime(now.year + 5),
+        );
+        if (pickedDate == null || !context.mounted) return;
+
+        final pickedTime = await showTimePicker(
+          context: context,
+          initialTime: TimeOfDay.now(),
+        );
+        if (pickedTime == null || !context.mounted) return;
+
+        reminderDate = DateTime(
+          pickedDate.year,
+          pickedDate.month,
+          pickedDate.day,
+          pickedTime.hour,
+          pickedTime.minute,
+        );
+        if (reminderDate.isBefore(DateTime.now())) {
+          if (context.mounted) {
+            AppSnackbar.show(
+              context,
+              message: 'Reminder time cannot be in the past.',
+              isError: true,
+            );
+          }
+          return;
+        }
+      }
+
+      final updatedTask = task.copyWith(
+        reminderEnabled: true,
+        reminderDateTime: reminderDate,
+      );
+      await ref.read(taskActionProvider.notifier).updateTask(updatedTask);
+      if (context.mounted) {
+        AppSnackbar.show(
+          context,
+          message:
+              'Reminder set for ${DateFormat('d MMM, hh:mm a').format(reminderDate)} 🔔',
+        );
+      }
+    } else {
+      final updatedTask = task.copyWith(
+        reminderEnabled: false,
+      );
+      await ref.read(taskActionProvider.notifier).updateTask(updatedTask);
+      if (context.mounted) {
+        AppSnackbar.show(context, message: 'Reminder turned off.');
+      }
+    }
+  }
 }
+

@@ -46,6 +46,15 @@
   - Native custom time picker option.
   - Due time chips rendered directly on task cards and details.
 
+- **🔔 Smart Reminders & Scheduled Push Notifications**
+  - High-priority background notifications triggered via `flutter_local_notifications` with system alarm wake-locks.
+  - Native timezone awareness with automatic device timezone detection via `flutter_timezone`.
+  - Flexible scheduling options: at due time, 15m before, 30m before, 1h before, or custom date & time.
+  - Interactive reminder management directly from task detail and new task screens.
+  - Auto-cleanup: Pending alarms are automatically cancelled when a task is completed or deleted.
+  - Instant in-app notification test action and runtime permission management in Profile settings.
+
+
 - **🔒 Authentication & Cloud Sync**
   - Google Sign-In with automatic profile picture (PFP) and display name synchronization.
   - Email & Password Sign-In and Registration with friendly validation messages.

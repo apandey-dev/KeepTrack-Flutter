@@ -7,6 +7,8 @@ import 'core/theme/theme_provider.dart';
 import 'firebase_options.dart';
 import 'navigation/app_router.dart';
 
+import 'services/notification_service.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
@@ -19,6 +21,12 @@ void main() async {
   } catch (_) {
     // Platform-specific fallback
   }
+
+  // Initialize push & local notification channels and timezone service
+  try {
+    await NotificationService().init();
+  } catch (_) {}
+
   runApp(
     const ProviderScope(
       child: MonoTodoApp(),

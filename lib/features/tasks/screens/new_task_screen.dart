@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart';
 import '../../../core/utils/date_utils.dart';
 import '../../../models/priority_level.dart';
 import '../../../models/task_model.dart';
 import '../../../models/task_theme_color.dart';
+import '../../../services/notification_service.dart';
 import '../../../shared/custom_snackbar.dart';
 import '../task_controller.dart';
 
@@ -23,6 +25,117 @@ class _NewTaskScreenState extends ConsumerState<NewTaskScreen> {
   final _descController = TextEditingController();
   int _selectedColorIndex = 2; // Default to purple (palette[2]) as shown in new-task.png!
   String? _selectedTime;
+
+  bool _reminderEnabled = false;
+  DateTime? _reminderDateTime;
+  String _reminderOffset = 'at_due_time'; // 'at_due_time', '15m_before', '30m_before', '1h_before', 'custom'
+
+  DateTime? _calculateReminderDateTime() {
+    if (!_reminderEnabled) return null;
+    if (_reminderOffset == 'custom' && _reminderDateTime != null) {
+      return _reminderDateTime;
+    }
+
+    final baseDate = widget.targetDate ?? DateTime.now();
+    if (_selectedTime != null) {
+      try {
+        final parts = _selectedTime!.trim().split(' ');
+        final timeParts = parts[0].split(':');
+        int hour = int.parse(timeParts[0]);
+        final minute = int.parse(timeParts[1]);
+        final isPm = parts.length > 1 && parts[1].toUpperCase() == 'PM';
+        if (isPm && hour < 12) hour += 12;
+        if (!isPm && hour == 12) hour = 0;
+        final dueDateTime = DateTime(baseDate.year, baseDate.month, baseDate.day, hour, minute);
+
+        switch (_reminderOffset) {
+          case '15m_before':
+            return dueDateTime.subtract(const Duration(minutes: 15));
+          case '30m_before':
+            return dueDateTime.subtract(const Duration(minutes: 30));
+          case '1h_before':
+            return dueDateTime.subtract(const Duration(hours: 1));
+          case 'at_due_time':
+          default:
+            return dueDateTime;
+        }
+      } catch (_) {}
+    }
+
+    if (_reminderDateTime != null) return _reminderDateTime;
+
+    final defaultToday = DateTime(baseDate.year, baseDate.month, baseDate.day, 9, 0);
+    if (defaultToday.isAfter(DateTime.now())) {
+      return defaultToday;
+    }
+    return DateTime.now().add(const Duration(minutes: 15));
+  }
+
+  Future<void> _pickCustomReminderDateTime() async {
+    final now = DateTime.now();
+    final baseDate = widget.targetDate ?? now;
+    final initialDate = baseDate.isAfter(now) ? baseDate : now;
+
+    final pickedDate = await showDatePicker(
+      context: context,
+      initialDate: initialDate,
+      firstDate: now,
+      lastDate: DateTime(now.year + 5),
+    );
+
+    if (pickedDate == null || !mounted) return;
+
+    final pickedTime = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.now(),
+    );
+
+    if (pickedTime == null || !mounted) return;
+
+    final customDateTime = DateTime(
+      pickedDate.year,
+      pickedDate.month,
+      pickedDate.day,
+      pickedTime.hour,
+      pickedTime.minute,
+    );
+
+    if (customDateTime.isBefore(DateTime.now())) {
+      if (mounted) {
+        AppSnackbar.show(
+          context,
+          message: 'Reminder time cannot be in the past.',
+          isError: true,
+        );
+      }
+      return;
+    }
+
+    setState(() {
+      _reminderOffset = 'custom';
+      _reminderDateTime = customDateTime;
+    });
+  }
+
+  Future<void> _handleReminderToggle(bool val) async {
+    if (val) {
+      final granted = await NotificationService().requestPermissions();
+      if (!mounted) return;
+      if (!granted) {
+        AppSnackbar.show(
+          context,
+          message: 'Notification permission is required to receive reminders.',
+          isError: true,
+        );
+      }
+    }
+    setState(() {
+      _reminderEnabled = val;
+      if (val && _reminderDateTime == null) {
+        _reminderDateTime = _calculateReminderDateTime();
+      }
+    });
+  }
 
   @override
   void initState() {
@@ -333,6 +446,16 @@ class _NewTaskScreenState extends ConsumerState<NewTaskScreen> {
     }
 
     final dateKey = AppDateUtils.toDateKey(date);
+    final reminderTime = _calculateReminderDateTime();
+
+    if (_reminderEnabled && reminderTime != null && reminderTime.isBefore(DateTime.now())) {
+      AppSnackbar.show(
+        context,
+        message: 'Reminder time is in the past. Please pick a future reminder time.',
+        isError: true,
+      );
+      return;
+    }
 
     final newTask = TaskModel(
       id: '',
@@ -342,6 +465,8 @@ class _NewTaskScreenState extends ConsumerState<NewTaskScreen> {
       scheduledDate: date,
       dateKey: dateKey,
       dueTime: _selectedTime,
+      reminderEnabled: _reminderEnabled && reminderTime != null,
+      reminderDateTime: reminderTime,
       colorIndex: _selectedColorIndex,
       priority: TaskPriority.low,
       isCompleted: false,
@@ -677,9 +802,179 @@ class _NewTaskScreenState extends ConsumerState<NewTaskScreen> {
 
               const SizedBox(height: 24),
 
+              // Section: REMINDER NOTIFICATION
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        _reminderEnabled
+                            ? Icons.notifications_active_rounded
+                            : Icons.notifications_none_rounded,
+                        size: 18,
+                        color: _reminderEnabled
+                            ? const Color(0xFF3B82F6)
+                            : secondaryTextColor,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'REMINDER NOTIFICATION',
+                        style: GoogleFonts.mali(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 1.2,
+                          color: _reminderEnabled
+                              ? (isDark ? Colors.white : const Color(0xFF111827))
+                              : secondaryTextColor,
+                        ),
+                      ),
+                    ],
+                  ),
+                  Transform.scale(
+                    scale: 0.85,
+                    child: Switch(
+                      value: _reminderEnabled,
+                      activeThumbColor: isDark ? Colors.white : const Color(0xFF111827),
+                      onChanged: _handleReminderToggle,
+                    ),
+                  ),
+                ],
+              ),
+
+              if (_reminderEnabled) ...[
+                const SizedBox(height: 10),
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: cardBg,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: isDark ? const Color(0xFF2E2E2E) : const Color(0xFFE5E7EB),
+                      width: 1.2,
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Builder(builder: (context) {
+                        final effectiveTime = _calculateReminderDateTime();
+                        return Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF3B82F6).withValues(alpha: 0.12),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.alarm_rounded,
+                                size: 18,
+                                color: Color(0xFF3B82F6),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Scheduled Reminder',
+                                    style: GoogleFonts.mali(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: secondaryTextColor,
+                                    ),
+                                  ),
+                                  Text(
+                                    effectiveTime != null
+                                        ? DateFormat('EEE, d MMM yyyy • hh:mm a')
+                                            .format(effectiveTime)
+                                        : 'Select time below',
+                                    style: GoogleFonts.mali(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w700,
+                                      color: primaryTextColor,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        );
+                      }),
+                      const SizedBox(height: 14),
+
+                      if (_selectedTime != null) ...[
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            _buildOffsetChip(
+                              label: 'At due time',
+                              value: 'at_due_time',
+                              isDark: isDark,
+                              borderColor: borderColor,
+                            ),
+                            _buildOffsetChip(
+                              label: '15m before',
+                              value: '15m_before',
+                              isDark: isDark,
+                              borderColor: borderColor,
+                            ),
+                            _buildOffsetChip(
+                              label: '30m before',
+                              value: '30m_before',
+                              isDark: isDark,
+                              borderColor: borderColor,
+                            ),
+                            _buildOffsetChip(
+                              label: '1h before',
+                              value: '1h_before',
+                              isDark: isDark,
+                              borderColor: borderColor,
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                      ],
+
+                      OutlinedButton.icon(
+                        onPressed: _pickCustomReminderDateTime,
+                        icon: const Icon(Icons.edit_calendar_rounded, size: 16),
+                        label: Text(
+                          _reminderOffset == 'custom' && _reminderDateTime != null
+                              ? 'Change Custom Date & Time'
+                              : 'Pick Custom Date & Time',
+                          style: GoogleFonts.mali(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: primaryTextColor,
+                          side: BorderSide(
+                            color: _reminderOffset == 'custom'
+                                ? (isDark ? Colors.white : Colors.black)
+                                : borderColor,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+
+              const SizedBox(height: 24),
+
               // Section: SUBTLE COLOR THEME
               Text(
                 'SUBTLE COLOR THEME',
+
                 style: GoogleFonts.mali(
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
@@ -764,6 +1059,46 @@ class _NewTaskScreenState extends ConsumerState<NewTaskScreen> {
               ),
               const SizedBox(height: 20),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOffsetChip({
+    required String label,
+    required String value,
+    required bool isDark,
+    required Color borderColor,
+  }) {
+    final isSelected = _reminderOffset == value;
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _reminderOffset = value;
+          _reminderDateTime = null; // resets custom override
+        });
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? (isDark ? Colors.white : const Color(0xFF111827))
+              : (isDark ? const Color(0xFF262626) : const Color(0xFFF3F4F6)),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: isSelected ? Colors.transparent : borderColor,
+          ),
+        ),
+        child: Text(
+          label,
+          style: GoogleFonts.mali(
+            fontSize: 11,
+            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+            color: isSelected
+                ? (isDark ? Colors.black : Colors.white)
+                : (isDark ? Colors.white70 : const Color(0xFF374151)),
           ),
         ),
       ),
